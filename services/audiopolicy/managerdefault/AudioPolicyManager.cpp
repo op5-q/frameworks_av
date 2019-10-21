@@ -236,26 +236,6 @@ status_t AudioPolicyManager::setDeviceConnectionStateInt(audio_devices_t deviceT
             return false;
         };
 
-#ifdef FM_POWER_OPT
-        // handle FM device connection state to trigger FM AFE loopback
-        if (device == AUDIO_DEVICE_OUT_FM && hasPrimaryOutput()) {
-           audio_devices_t newDevice = AUDIO_DEVICE_NONE;
-           if (state == AUDIO_POLICY_DEVICE_STATE_AVAILABLE) {
-               mPrimaryOutput->changeRefCount(AUDIO_STREAM_MUSIC, 1);
-               newDevice = (audio_devices_t)(getNewOutputDevice(mPrimaryOutput, false)|AUDIO_DEVICE_OUT_FM);
-               mFMIsActive = true;
-               mPrimaryOutput->mDevice = newDevice & ~AUDIO_DEVICE_OUT_FM;
-           } else {
-               newDevice = (audio_devices_t)(getNewOutputDevice(mPrimaryOutput, false));
-               mFMIsActive = false;
-               mPrimaryOutput->changeRefCount(AUDIO_STREAM_MUSIC, -1);
-           }
-           AudioParameter param = AudioParameter();
-           param.addInt(String8("handle_fm"), (int)newDevice);
-           mpClientInterface->setParameters(mPrimaryOutput->mIoHandle, param.toString());
-        }
-#endif /* FM_POWER_OPT end */
-
         if (doCheckForDeviceAndOutputChanges) {
             checkForDeviceAndOutputChanges(checkCloseOutputs);
         } else {
@@ -4306,10 +4286,6 @@ AudioPolicyManager::AudioPolicyManager(AudioPolicyClientInterface *clientInterfa
     mBeaconMuted(false),
     mTtsOutputAvailable(false),
     mMasterMono(false),
-#ifdef FM_POWER_OPT
-    mPrevFMVolumeDb(0.0f),
-    mFMIsActive(false),
-#endif
     mMusicEffectOutput(AUDIO_IO_HANDLE_NONE)
 {
 }
@@ -5898,19 +5874,6 @@ status_t AudioPolicyManager::checkAndSetVolume(IVolumeCurves &curves,
             mpClientInterface->setVoiceVolume(voiceVolume, delayMs);
             mLastVoiceVolume = voiceVolume;
         }
-#ifdef FM_POWER_OPT
-    } else if (stream == AUDIO_STREAM_MUSIC && hasPrimaryOutput() &&
-               outputDesc == mPrimaryOutput && mFMIsActive) {
-        /* Avoid unnecessary set_parameter calls as it puts the primary
-           outputs FastMixer in HOT_IDLE leading to breaks in audio */
-        if (volumeDb != mPrevFMVolumeDb) {
-            mPrevFMVolumeDb = volumeDb;
-            AudioParameter param = AudioParameter();
-            param.addFloat(String8("fm_volume"), Volume::DbToAmpl(volumeDb));
-            //Double delayMs to avoid sound burst while device switch.
-            mpClientInterface->setParameters(mPrimaryOutput->mIoHandle, param.toString(), delayMs*2);
-        }
-#endif /* FM_POWER_OPT end */
     }
     return NO_ERROR;
 }

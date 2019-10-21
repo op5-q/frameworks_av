@@ -746,12 +746,9 @@ protected:
         bool mTtsOutputAvailable;       // true if a dedicated output for TTS stream is available
 
         bool mMasterMono;               // true if we wish to force all outputs to mono
-#ifdef FM_POWER_OPT
-        float mPrevFMVolumeDb;
-        bool mFMIsActive;
-#endif
         AudioPolicyMixCollection mPolicyMixes; // list of registered mixes
         audio_io_handle_t mMusicEffectOutput;     // output selected for music effects
+
         uint32_t nextAudioPortGeneration();
 
         // Audio Policy Engine Interface.
