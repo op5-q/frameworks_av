@@ -396,10 +396,13 @@ private:
             hardware::camera::device::V1_0::DataCallbackMsg msgType,
             const hardware::hidl_vec<
                     hardware::camera::device::V1_0::HandleTimestampMessage>&) override;
+
+#ifdef QTI_CAMERA_DEVICE
     hardware::Return<void> QDataCallback(
             hardware::camera::device::V1_0::DataCallbackMsg msgType,
             uint32_t data, uint32_t bufferIndex,
             const vendor::qti::hardware::camera::device::V1_0::QCameraFrameMetadata& metadata) override;
+#endif
 
     /**
      * Implementation of android::hardware::camera::device::V1_0::ICameraDevicePreviewCallback
