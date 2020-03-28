@@ -33,6 +33,7 @@
 #include <policy.h>
 #include <utils/String8.h>
 #include <utils/Log.h>
+#include <cutils/properties.h>
 
 namespace android
 {
@@ -402,6 +403,21 @@ audio_devices_t Engine::getDeviceForStrategyInt(legacy_strategy strategy,
     case STRATEGY_REROUTING:
     case STRATEGY_MEDIA: {
         uint32_t device2 = AUDIO_DEVICE_NONE;
+        if (isInCall() && (device == AUDIO_DEVICE_NONE)) {
+            // when in call, get the device for Phone strategy
+            device = getDeviceForStrategyInt(
+                    STRATEGY_PHONE, availableOutputDevices, availableInputDevices, outputs,
+                    outputDeviceTypesToIgnore);
+            break;
+        }
+
+        if (strategy != STRATEGY_SONIFICATION) {
+            // no sonification on remote submix (e.g. WFD)
+            if (availableOutputDevices.getDevice(AUDIO_DEVICE_OUT_REMOTE_SUBMIX,
+                                                 String8("0"), AUDIO_FORMAT_DEFAULT) != 0) {
+                device2 = availableOutputDevices.types() & AUDIO_DEVICE_OUT_REMOTE_SUBMIX;
+            }
+        }
         if (isInCall() && (strategy == STRATEGY_MEDIA)) {
             device = getDeviceForStrategyInt(
                     STRATEGY_PHONE, availableOutputDevices, availableInputDevices, outputs,
@@ -549,7 +565,10 @@ audio_devices_t Engine::getDeviceForInputSource(audio_source_t inputSource) cons
     switch (inputSource) {
     case AUDIO_SOURCE_DEFAULT:
     case AUDIO_SOURCE_MIC:
-    if (availableDeviceTypes & AUDIO_DEVICE_IN_BLUETOOTH_A2DP) {
+    if (property_get_bool("vendor.audio.enable.mirrorlink", false) &&
+        (availableDeviceTypes & AUDIO_DEVICE_IN_REMOTE_SUBMIX)) {
+        device = AUDIO_DEVICE_IN_REMOTE_SUBMIX;
+    } else if (availableDeviceTypes & AUDIO_DEVICE_IN_BLUETOOTH_A2DP) {
         device = AUDIO_DEVICE_IN_BLUETOOTH_A2DP;
     } else if ((getForceUse(AUDIO_POLICY_FORCE_FOR_RECORD) == AUDIO_POLICY_FORCE_BT_SCO) &&
         (availableDeviceTypes & AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET)) {
@@ -610,7 +629,10 @@ audio_devices_t Engine::getDeviceForInputSource(audio_source_t inputSource) cons
         if (inputSource == AUDIO_SOURCE_HOTWORD) {
             availableDeviceTypes = availablePrimaryDeviceTypes;
         }
-        if (getForceUse(AUDIO_POLICY_FORCE_FOR_RECORD) == AUDIO_POLICY_FORCE_BT_SCO &&
+        if (property_get_bool("vendor.audio.enable.mirrorlink", false) &&
+            (availableDeviceTypes & AUDIO_DEVICE_IN_REMOTE_SUBMIX)) {
+            device = AUDIO_DEVICE_IN_REMOTE_SUBMIX;
+        } else if (getForceUse(AUDIO_POLICY_FORCE_FOR_RECORD) == AUDIO_POLICY_FORCE_BT_SCO &&
                 availableDeviceTypes & AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET) {
             device = AUDIO_DEVICE_IN_BLUETOOTH_SCO_HEADSET;
         } else if (availableDeviceTypes & AUDIO_DEVICE_IN_WIRED_HEADSET) {

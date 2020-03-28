@@ -134,6 +134,10 @@ public:
     /* if display-port is connected and can be used for voip/voice */
     bool mDpConnAndAllowedForVoice;
 
+    /* if display-port is connected and can be used for voip/voice */
+    bool mDpConnAndAllowedForVoice = false;
+
+
     /** current forced use configuration. */
     audio_policy_forced_cfg_t mForceUse[AUDIO_POLICY_FORCE_USE_CNT] = {};
 };
